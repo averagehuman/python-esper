@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Script to the ANTLR tool parser compiler
+#
+mkdir -p ../src/epl/generated
+
+java -jar ../lib/antlr-4.6-complete.jar -Dlanguage=Python2 -o ../src/epl/generated EsperEPL2Grammar.g
+
