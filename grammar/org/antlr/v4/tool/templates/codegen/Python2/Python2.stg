@@ -54,6 +54,20 @@ from antlr4 import *
 from io import StringIO
 import sys
 
+class Subscriptable(object):
+    """
+    Dict-like mixin.
+    """
+
+    def __getitem__(self, key):
+        return self.__dict__(key)
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
+class ParserRuleContextDict(ParserRuleContext, Subscriptable):
+    pass
+
 <namedActions.header>
 <parser>
 
@@ -535,15 +549,15 @@ LexerPushModeCommand(arg, grammar)  ::= "pushMode(<arg>)"
 
 ActionText(t) ::= "<t.text>"
 ActionTemplate(t) ::= "<t.st>"
-ArgRef(a) ::= "localctx.<a.name>"
-LocalRef(a) ::= "localctx.<a.name>"
-RetValueRef(a) ::= "localctx.<a.name>"
+ArgRef(a) ::= "localctx['<a.name>']"
+LocalRef(a) ::= "localctx['<a.name>']"
+RetValueRef(a) ::= "localctx['<a.name>']"
 QRetValueRef(a) ::= "<ctx(a)>.<a.dict>.<a.name>"
 /** How to translate $tokenLabel */
 TokenRef(t) ::= "<ctx(t)>.<t.name>"
 LabelRef(t) ::= "<ctx(t)>.<t.name>"
 ListLabelRef(t) ::= "<ctx(t)>.<ListLabelName(t.name)>"
-SetAttr(s,rhsChunks) ::= "<ctx(s)>.<s.name> = <rhsChunks>"
+SetAttr(s,rhsChunks) ::= "<ctx(s)><s.name> = <rhsChunks>"
 
 TokenLabelType() ::= "<file.TokenLabelType; null={Token}>"
 InputSymbolType() ::= "<file.InputSymbolType; null={Token}>"
@@ -573,10 +587,10 @@ SetNonLocalAttr(s, rhsChunks)  ::= "getInvokingContext(<s.ruleIndex>).<s.name> =
 
 AddToLabelList(a) ::= "<ctx(a.label)>.<a.listName>.append(<labelref(a.label)>)"
 
-TokenDecl(t) ::= "self.<t.name> = None # <TokenLabelType()>"
+TokenDecl(t) ::= "self.__dict__['<t.name>'] = None # <TokenLabelType()>"
 TokenTypeDecl(t) ::= "self.<t.name> = 0 # <TokenLabelType()> type"
 TokenListDecl(t) ::= "self.<t.name> = list() # of <TokenLabelType()>s"
-RuleContextDecl(r) ::= "self.<r.name> = None # <r.ctxName>"
+RuleContextDecl(r) ::= "self.__dict__['<r.name>'] = None # <r.ctxName>"
 RuleContextListDecl(rdecl) ::= "self.<rdecl.name> = list() # of <rdecl.ctxName>s"
 
 ContextTokenGetterDecl(t)      ::= <<
@@ -636,7 +650,7 @@ CaptureNextToken(d) ::= "<d.varName> = self._input.LT(1)"
 CaptureNextTokenType(d) ::= "<d.varName> = self._input.LA(1)"
 
 StructDecl(struct,ctorAttrs,attrs,getters,dispatchMethods,interfaces,extensionMembers) ::= <<
-class <struct.name>(<if(contextSuperClass)><contextSuperClass><else>ParserRuleContext<endif>):
+class <struct.name>(<if(contextSuperClass)><contextSuperClass><else>ParserRuleContextDict<endif>):
 
     def __init__(self, parser, parent=None, invokingState=-1<struct.ctorAttrs:{a | , <a.name>=None}>):
         super(<parser.name>.<struct.name>, self).__init__(parent, invokingState)
@@ -693,7 +707,7 @@ def accept(self, visitor):
 AttributeDecl(d) ::= "self.<d.name> = <if(d.initValue)><d.initValue><else>None<endif>"
 
 /** If we don't know location of label def x, use this template */
-labelref(x) ::= "<if(!x.isLocal)>localctx.<endif><x.name>"
+labelref(x) ::= "<if(!x.isLocal)>localctx['<x.name>']<else><x.name><endif>"
 
 /** For any action chunk, what is correctly-typed context struct ptr? */
 ctx(actionChunk) ::= "localctx"
